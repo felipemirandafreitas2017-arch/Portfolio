@@ -18,7 +18,7 @@
     --bg-color: #000000;
     --second-bg-color: #101010;
     --text-color: white;
-    --main-color: #C7FD40;
+    --main-color: #006cb5;
 }
 
 html {
@@ -60,8 +60,8 @@ body {
 span{
     background: linear-gradient(
         270deg,
-        #d3ff62 10%,
-        #C7FD40 100%
+        #0f9fff 10%,
+        #006cb5 100%
     );
     background-clip: text;
     color: transparent;
@@ -84,8 +84,8 @@ span{
     border-radius: 3rem;
         background: linear-gradient(
         270deg,
-        #d3ff62 10%,
-        #C7FD40 100%
+        #0f9fff 10%,
+        #006cb5 100%
     );
     letter-spacing: 1px;
     cursor: pointer;
@@ -385,3 +385,17 @@ section{
         flex-direction: column;
     }
 }
+
+.contact{
+    padding-top: 18rem;
+}
+.mensagem{
+    font-size: 1.8rem;
+    min-height: 2.5rem;
+    font-weight: 500;
+}
+.mensagem.erro{ color: #ff5c5c; }
+.mensagem.sucesso{ color: #3ddc84; }
+.mensagem.carregando{ color: #0f9fff; }
+.contact form input[readonly]{ opacity: 0.8; }
+.btn:disabled{ opacity: 0.5; cursor: not-allowed; }
