@@ -6,7 +6,7 @@ USE portfolio;
 
 -- Cria a tabela de CEPs e seus endereços.
 CREATE TABLE IF NOT EXISTS cep (
-  cep     CHAR(9) PRIMARY KEY, -- CEP único do endereço.
+  cep     CHAR(8) PRIMARY KEY, -- CEP único do endereço.
   rua     VARCHAR(100), -- Nome da rua.
   bairro  VARCHAR(100), -- Nome do bairro.
   cidade  VARCHAR(100) NOT NULL, -- Cidade do endereço.
@@ -17,9 +17,9 @@ CREATE TABLE IF NOT EXISTS cep (
 CREATE TABLE IF NOT EXISTS mensagem (
   id          INT PRIMARY KEY AUTO_INCREMENT, -- Identificador único da mensagem.
   nome        VARCHAR(100) NOT NULL, -- Nome de quem enviou a mensagem.
-  email       VARCHAR(100) NOT NULL, -- E-mail para contato.
+  email       VARCHAR(150) NOT NULL, -- E-mail para contato.
   texto       TEXT NOT NULL, -- Conteúdo da mensagem.
-  data_envio  DATETIME DEFAULT NOW(), -- Data e hora do envio.
-  cep         CHAR(9) NOT NULL, -- CEP relacionado à mensagem.
+  data_envio  DATETIME DEFAULT CURRENT_TIMESTAMP, -- Data e hora do envio.
+  cep         CHAR(8) NOT NULL, -- CEP relacionado à mensagem.
   FOREIGN KEY (cep) REFERENCES cep(cep) -- Liga a mensagem ao endereço cadastrado.
 );
