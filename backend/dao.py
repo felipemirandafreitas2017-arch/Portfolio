@@ -1,32 +1,32 @@
-
-# Driver que permite ao Python abrir conexões com o MySQL.
-# Se faltar no interpretador selecionado, instale com:
-# python -m pip install mysql-connector-python
+import os
 import mysql.connector
 
-# Classes usadas para transformar os dados do banco em objetos.
-from models import Cep, Mensagem
+from models import Cep, Mensagem, Projeto
+
+# Configuração centralizada da conexão com o banco.
+DB_CONFIG = {
+    "host": "localhost",
+    "user": "root",
+    "password": os.getenv("PORTFOLIO_DB_PASSWORD", "SUA_SENHA"),
+    "database": "portfolio",
+}
 
 
 class CepDAO:
     def __init__(self, config):
-        # Guarda os dados de conexão, como host, usuário, senha e banco.
         self.config = config
 
     def conectar(self):
-        # Abre uma conexão com o MySQL usando a configuração recebida.
         return mysql.connector.connect(**self.config)
 
     def buscar(self, numero_cep):
-        # Busca um endereço pelo CEP e devolve um objeto Cep, se encontrado.
         conexao = self.conectar()
         cursor = conexao.cursor()
 
         try:
-            # O %s é preenchido pelo driver com o valor de numero_cep.
             cursor.execute(
                 "SELECT cep, rua, bairro, cidade, uf FROM cep WHERE cep = %s",
-                (numero_cep,)
+                (numero_cep,),
             )
 
             linha = cursor.fetchone()
@@ -37,12 +37,10 @@ class CepDAO:
             return None
 
         finally:
-            # Fecha o cursor e a conexão mesmo se ocorrer algum erro.
             cursor.close()
             conexao.close()
 
     def cadastrar(self, cep):
-        # Insere no banco os dados do endereço recebido.
         conexao = self.conectar()
         cursor = conexao.cursor()
 
@@ -57,43 +55,31 @@ class CepDAO:
                     cep.rua,
                     cep.bairro,
                     cep.cidade,
-                    cep.uf
-                )
+                    cep.uf,
+                ),
             )
 
             conexao.commit()
 
         finally:
-            # Libera os recursos usados pelo banco.
             cursor.close()
             conexao.close()
 
 
 class MensagemDAO:
     def __init__(self):
-        # Configuração usada para conectar ao banco portfolio.
-        self.config = {
-            "host": "localhost",
-            "user": "root",
-            "password": "SUA_SENHA",
-            "database": "portfolio"
-        }
-
-        # Reutiliza a mesma configuração para buscar e cadastrar CEPs.
+        self.config = DB_CONFIG.copy()
         self.cep_dao = CepDAO(self.config)
 
     def conectar(self):
-        # Abre uma conexão para executar operações na tabela mensagem.
         return mysql.connector.connect(**self.config)
 
     def cadastrar(self, mensagem):
-        # Garante que o CEP exista antes de cadastrar a mensagem relacionada.
         cep_existente = self.cep_dao.buscar(mensagem.cep.cep)
 
         if cep_existente is None:
             self.cep_dao.cadastrar(mensagem.cep)
 
-        # Insere a mensagem e retorna o identificador gerado pelo MySQL.
         conexao = self.conectar()
         cursor = conexao.cursor()
 
@@ -107,21 +93,18 @@ class MensagemDAO:
                     mensagem.nome,
                     mensagem.email,
                     mensagem.texto,
-                    mensagem.cep.cep
-                )
+                    mensagem.cep.cep,
+                ),
             )
 
             conexao.commit()
-
             return cursor.lastrowid
 
         finally:
-            # Fecha os recursos mesmo se o cadastro falhar.
             cursor.close()
             conexao.close()
 
     def listar(self):
-        # Busca mensagens junto com os dados do CEP de cada uma.
         conexao = self.conectar()
         cursor = conexao.cursor()
 
@@ -148,20 +131,129 @@ class MensagemDAO:
             linhas = cursor.fetchall()
             mensagens = []
 
-            # Converte cada linha retornada em objetos Cep e Mensagem.
             for linha in linhas:
                 endereco = Cep(*linha[5:10])
-
-                mensagem = Mensagem(
-                    *linha[0:5],
-                    endereco
-                )
-
+                mensagem = Mensagem(*linha[0:5], endereco)
                 mensagens.append(mensagem)
 
             return mensagens
 
         finally:
-            # Fecha os recursos usados para consultar o banco.
+            cursor.close()
+            conexao.close()
+
+
+class ProjetoDAO:
+    def __init__(self):
+        self.config = DB_CONFIG.copy()
+
+    def conectar(self):
+        return mysql.connector.connect(**self.config)
+
+    def listar(self):
+        conexao = self.conectar()
+        cursor = conexao.cursor()
+
+        try:
+            cursor.execute(
+                """
+                SELECT id_projeto, titulo, descricao, imagem, categoria, link
+                FROM projeto
+                ORDER BY id_projeto DESC
+                """
+            )
+
+            linhas = cursor.fetchall()
+            projetos = []
+
+            for linha in linhas:
+                projeto = Projeto(
+                    linha[1],
+                    linha[2],
+                    linha[3],
+                    linha[4],
+                    linha[5],
+                    linha[0],
+                )
+                projetos.append(projeto)
+
+            return projetos
+
+        finally:
+            cursor.close()
+            conexao.close()
+
+    def cadastrar(self, projeto):
+        conexao = self.conectar()
+        cursor = conexao.cursor()
+
+        try:
+            cursor.execute(
+                """
+                INSERT INTO projeto (titulo, descricao, imagem, categoria, link)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    projeto.titulo,
+                    projeto.descricao,
+                    projeto.imagem,
+                    projeto.categoria,
+                    projeto.link,
+                ),
+            )
+
+            conexao.commit()
+            return cursor.lastrowid
+
+        finally:
+            cursor.close()
+            conexao.close()
+
+    def atualizar(self, id_projeto, dados):
+        conexao = self.conectar()
+        cursor = conexao.cursor()
+
+        try:
+            cursor.execute(
+                """
+                UPDATE projeto
+                SET titulo = %s,
+                    descricao = %s,
+                    imagem = %s,
+                    categoria = %s,
+                    link = %s
+                WHERE id_projeto = %s
+                """,
+                (
+                    dados["titulo"],
+                    dados["descricao"],
+                    dados.get("imagem"),
+                    dados.get("categoria"),
+                    dados.get("link"),
+                    id_projeto,
+                ),
+            )
+
+            conexao.commit()
+            return cursor.rowcount > 0
+
+        finally:
+            cursor.close()
+            conexao.close()
+
+    def excluir(self, id_projeto):
+        conexao = self.conectar()
+        cursor = conexao.cursor()
+
+        try:
+            cursor.execute(
+                "DELETE FROM projeto WHERE id_projeto = %s",
+                (id_projeto,),
+            )
+
+            conexao.commit()
+            return cursor.rowcount > 0
+
+        finally:
             cursor.close()
             conexao.close()
