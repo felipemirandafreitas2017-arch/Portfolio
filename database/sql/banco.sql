@@ -23,3 +23,13 @@ CREATE TABLE IF NOT EXISTS mensagem (
   cep         CHAR(8) NOT NULL, -- CEP relacionado à mensagem.
   FOREIGN KEY (cep) REFERENCES cep(cep) -- Liga a mensagem ao endereço cadastrado.
 );
+
+-- Cria a tabela que armazena os projetos exibidos na aba Serviços.
+CREATE TABLE IF NOT EXISTS projeto (
+  id_projeto  INT PRIMARY KEY AUTO_INCREMENT, -- Identificador único do projeto.
+  titulo      VARCHAR(100) NOT NULL, -- Nome do projeto.
+  descricao   TEXT NOT NULL, -- Descrição do projeto.
+  imagem      VARCHAR(255), -- Caminho da imagem do projeto.
+  categoria   VARCHAR(60), -- Categoria ou tipo do projeto.
+  link        VARCHAR(255) -- Link para acessar o projeto.
+);
