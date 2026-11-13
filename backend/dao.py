@@ -7,9 +7,9 @@ from models import Cep, Mensagem, Projeto
 # Configuração da conexão com o banco de dados MySQL.
 # Os valores podem ser alterados por variáveis de ambiente.
 DB_CONFIG = {
-    "host": os.getenv("PORTFOLIO_DB_HOST", "localhost"),
+    "host": os.getenv("PORTFOLIO_DB_HOST", "127.0.0.1"),
     "user": os.getenv("PORTFOLIO_DB_USER", "root"),
-    "password": os.getenv("PORTFOLIO_DB_PASSWORD", ""),
+    "password": os.getenv("PORTFOLIO_DB_PASSWORD", "root"),
     "database": os.getenv("PORTFOLIO_DB_NAME", "portfolio"),
     "port": int(os.getenv("PORTFOLIO_DB_PORT", "3306"))
 }
