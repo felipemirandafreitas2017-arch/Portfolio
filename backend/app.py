@@ -11,9 +11,13 @@ from models import Projeto, Mensagem
 
 app = Flask(__name__)
 # Define a chave usada para proteger os dados da sessão.
+# Se não houver uma chave configurada, a chave temporária mantém o app executável,
+# mas as sessões existentes deixam de ser válidas quando o processo reinicia.
 app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
 app.config["SESSION_COOKIE_HTTPONLY"] = True
+# Cookies Secure só são enviados por HTTPS; SameSite é ajustado junto dessa opção
+# para permitir ou restringir o envio do cookie em requisições entre origens.
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 app.config["SESSION_COOKIE_SECURE"] = COOKIE_SECURE
 app.config["SESSION_COOKIE_SAMESITE"] = os.getenv(
@@ -36,6 +40,8 @@ def administrador_logado():
 
 
 # Protege operações administrativas com sessão e token CSRF.
+# A sessão identifica o administrador; o token adicional exige que a interface
+# autenticada envie o valor associado à sessão nas operações de alteração.
 def proteger_requisicao():
     if not administrador_logado():
         return jsonify({
@@ -45,6 +51,8 @@ def proteger_requisicao():
     token_enviado = request.headers.get("X-CSRF-Token", "")
     token_salvo = session.get("csrf_token", "")
 
+    # A comparação em tempo constante evita revelar informações do token
+    # pela duração da comparação.
     if not token_salvo or not hmac.compare_digest(
         token_enviado, token_salvo
     ):
@@ -107,6 +115,7 @@ def cadastrar_projeto():
             "mensagem": "Verifique os campos e os limites de caracteres do projeto."
         }), 400
 
+    # O DAO devolve o identificador gerado pelo banco para a resposta da API.
     id_projeto = projeto_dao.cadastrar(projeto)
 
     return jsonify({
@@ -197,6 +206,8 @@ def login_admin():
 
     session.clear()
     session["administrador"] = True
+    # O token fica associado à sessão e será enviado pela interface nas operações
+    # que alteram dados (POST, PUT e DELETE).
     session["csrf_token"] = secrets.token_hex(32)
 
     return jsonify({
@@ -297,6 +308,7 @@ def cadastrar_mensagem():
 
 @app.errorhandler(Error)
 def erro_banco(error):
+    # Evita expor detalhes da conexão ou da consulta na resposta pública da API.
     return jsonify({
         "mensagem": "Não foi possível acessar o banco de dados."
     }), 500

@@ -24,6 +24,8 @@ class CepDAO:
         conexao = None
 
         if cursor is None:
+            # Sem cursor externo, esta operação controla sua própria conexão.
+            # Com cursor recebido, participa da conexão/transação de quem chamou.
             conexao = self.conectar()
             cursor = conexao.cursor()
 
@@ -40,6 +42,8 @@ class CepDAO:
 
             return None
         finally:
+            # Só fecha recursos que este método abriu; um cursor externo continua
+            # disponível para as demais operações da mesma transação.
             if conexao:
                 cursor.close()
                 conexao.close()
@@ -48,6 +52,7 @@ class CepDAO:
         conexao = None
 
         if cursor is None:
+            # Permite usar o método isoladamente ou dentro de uma transação maior.
             conexao = self.conectar()
             cursor = conexao.cursor()
 
@@ -81,6 +86,8 @@ class MensagemDAO:
         cursor = conexao.cursor()
 
         try:
+            # Reutiliza o CEP existente para respeitar a chave primária da tabela;
+            # o mesmo cursor faz as duas gravações na conexão atual.
             cep_existente = self.cep_dao.buscar(
                 mensagem.cep.cep, cursor
             )
@@ -105,6 +112,8 @@ class MensagemDAO:
             return cursor.lastrowid
 
         except Exception:
+            # Se qualquer gravação falhar, desfaz também a outra para não deixar
+            # mensagem e endereço parcialmente persistidos.
             conexao.rollback()
             raise
 
@@ -131,6 +140,8 @@ class MensagemDAO:
             mensagens = []
 
             for linha in linhas:
+                # As colunas do endereço ocupam as posições 5 a 9 do SELECT;
+                # os cinco primeiros valores correspondem aos campos da mensagem.
                 endereco = Cep(*linha[5:10])
                 mensagem = Mensagem(*linha[0:5], endereco)
                 mensagens.append(mensagem)
@@ -164,6 +175,8 @@ class ProjetoDAO:
             projetos = []
 
             for linha in linhas:
+                # A consulta começa pelo ID, enquanto o construtor recebe o ID
+                # por último; a ordem explícita adapta o resultado ao modelo.
                 projeto = Projeto(
                     linha[1],
                     linha[2],

@@ -24,6 +24,8 @@ class Cep:
         if not isinstance(dados, dict):
             dados = {}
 
+        # A API externa pode formatar o CEP com hífen e usar "logradouro" e
+        # "localidade"; aqui os formatos diferentes são normalizados no modelo.
         cep = str(dados.get("cep", "")).replace("-", "").strip()
         rua = str(dados.get("rua", dados.get("logradouro", "")) or "").strip()
         cidade = str(dados.get("cidade", dados.get("localidade", "")) or "").strip()
@@ -67,6 +69,8 @@ class Mensagem:
 
         # Se o CEP vier junto com as demais informações, usa esse bloco.
         # Caso contrário, considera que os dados do endereço estão no mesmo objeto.
+        # Isso permite receber tanto o formato aninhado do formulário quanto um
+        # objeto plano sem espalhar essa decisão pela rota da API.
         if not isinstance(dados_cep, dict):
             dados_cep = dados
 

@@ -22,6 +22,8 @@ async function requisicaoAPI(caminho, opcoes = {}) {
         cabecalhos["Content-Type"] = "application/json";
     }
 
+    // O token é necessário apenas em métodos que alteram estado; GET não altera
+    // dados e o login ainda não possui um token emitido.
     if (tokenCSRF && opcoes.method && opcoes.method !== "GET") {
         cabecalhos["X-CSRF-Token"] = tokenCSRF;
     }
@@ -29,9 +31,13 @@ async function requisicaoAPI(caminho, opcoes = {}) {
     const resposta = await fetch(`${API}${caminho}`, {
         ...opcoes,
         headers: cabecalhos,
+        // Inclui o cookie de sessão nas chamadas à API, mesmo quando frontend e
+        // backend estão em origens diferentes.
         credentials: "include"
     });
 
+    // Algumas respostas podem não conter JSON; nesse caso, a mensagem abaixo
+    // usa o texto padrão ao tratar uma resposta HTTP de erro.
     const dados = await resposta.json().catch(() => ({}));
 
     if (!resposta.ok) {
@@ -70,6 +76,7 @@ async function buscarCEP(cep) {
     try {
         mostrarStatus(mensagemCep, 'Buscando CEP...', 'carregando');
 
+        // Evita disparos repetidos enquanto a consulta externa está em andamento.
         if (botaoCep) {
             botaoCep.disabled = true;
         }
@@ -124,6 +131,7 @@ async function buscarCEP(cep) {
         );
 
     } finally {
+        // Reabilita o controle tanto em sucesso quanto em erro da consulta.
         if (botaoCep) {
             botaoCep.disabled = false;
         }
@@ -184,6 +192,8 @@ async function carregarProjetos() {
             conteudo.className = 'service-info';
 
             const titulo = document.createElement('h4');
+            // textContent insere os dados como texto, sem interpretar HTML vindo
+            // da API como marcação dentro da página.
             titulo.textContent = projeto.titulo;
 
             const descricao = document.createElement('p');
@@ -314,6 +324,8 @@ async function carregarDadosAdmin() {
             editar.textContent = 'Editar';
 
             editar.addEventListener('click', () => {
+                // Guarda o ID para que o envio do formulário saiba que deve
+                // atualizar este registro em vez de criar um novo.
                 idProjetoEdicao = projeto.id_projeto;
 
                 document.getElementById('titulo-projeto').value =
@@ -342,6 +354,7 @@ async function carregarDadosAdmin() {
             excluir.textContent = 'Excluir';
 
             excluir.addEventListener('click', async () => {
+                // Exige confirmação antes de enviar uma operação irreversível.
                 if (!confirm(
                     `Deseja excluir o projeto "${projeto.titulo}"?`
                 )) {
@@ -391,6 +404,8 @@ async function carregarDadosAdmin() {
             item.className = 'admin-item';
 
             const titulo = document.createElement('strong');
+            // Mantém os dados recebidos como texto; o conteúdo de uma mensagem
+            // não deve ser interpretado como elementos HTML.
             titulo.textContent =
                 `${mensagem.nome} — ${mensagem.email}`;
 
@@ -479,6 +494,8 @@ if (formularioProjeto) {
                 ? `/projetos/${idProjetoEdicao}`
                 : '/projetos';
 
+            // A presença de um ID indica edição; sem ID, o formulário cadastra
+            // um novo projeto.
             const metodo = idProjetoEdicao ? 'PUT' : 'POST';
 
             const resultado = await requisicaoAPI(caminho, {
