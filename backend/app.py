@@ -246,10 +246,12 @@ def logout_admin():
 # Rotas de envio e consulta das mensagens de contato.
 @app.route("/mensagens", methods=["GET"])
 def listar_mensagens():
-    bloqueio = proteger_requisicao()
-
-    if bloqueio:
-        return bloqueio
+    # Consulta não altera dados: basta a sessão de administrador, sem token CSRF.
+    # O front-end só envia o token em métodos que alteram estado.
+    if not administrador_logado():
+        return jsonify({
+            "mensagem": "Acesso não autorizado. Faça login."
+        }), 401
 
     mensagens = mensagem_dao.listar()
 
