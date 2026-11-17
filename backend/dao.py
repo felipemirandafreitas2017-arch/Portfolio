@@ -7,8 +7,8 @@ from models import Cep, Mensagem, Projeto
 # Configura os dados de conexão usando variáveis de ambiente.
 DB_CONFIG = {
     "host": os.getenv("PORTFOLIO_DB_HOST", "127.0.0.1"),
-    "user": os.getenv("PORTFOLIO_DB_USER", "root"),
-    "password": os.getenv("PORTFOLIO_DB_PASSWORD", "root"),
+    "user": os.getenv("PORTFOLIO_DB_USER", "portfolio_user"),
+    "password": os.getenv("PORTFOLIO_DB_PASSWORD", "portfolio_senha"),
     "database": os.getenv("PORTFOLIO_DB_NAME", "portfolio"),
     "port": int(os.getenv("PORTFOLIO_DB_PORT", "3306"))
 }

@@ -72,9 +72,30 @@ pip install -r requirements.txt
 
 ## 5. Configurar e executar o back-end
 
-Antes de iniciar o Flask, confira se as variáveis de ambiente exigidas pelo projeto estão configuradas de acordo com os nomes utilizados em `backend/app.py` e `backend/dao.py`.
+O back-end lê suas configurações de variáveis de ambiente. Defina-as no terminal antes de iniciar o Flask:
 
-As credenciais do banco devem corresponder ao usuário, senha e banco definidos na etapa 2. Também configure as variáveis de ambiente de segurança e CORS utilizadas pelo projeto. Não publique senhas ou chaves secretas no repositório.
+```bash
+export ADMIN_PASSWORD='escolha-uma-senha'
+export FLASK_SECRET_KEY='uma-chave-secreta-longa'
+export FRONTEND_ORIGIN='https://SEU-CODESPACE-5500.app.github.dev'
+export COOKIE_SECURE=true
+```
+
+| Variável | Para que serve | Padrão |
+|---|---|---|
+| `PORTFOLIO_DB_HOST` | Servidor do MySQL | `127.0.0.1` |
+| `PORTFOLIO_DB_USER` | Usuário do banco | `portfolio_user` |
+| `PORTFOLIO_DB_PASSWORD` | Senha do banco | `portfolio_senha` |
+| `PORTFOLIO_DB_NAME` | Nome do banco | `portfolio` |
+| `PORTFOLIO_DB_PORT` | Porta do MySQL | `3306` |
+| `ADMIN_PASSWORD` | Senha da área administrativa (obrigatória para o login funcionar) | nenhum |
+| `FLASK_SECRET_KEY` | Chave das sessões; se não for definida, é gerada a cada início e o login é perdido ao reiniciar | gerada automaticamente |
+| `FRONTEND_ORIGIN` | Endereço do front-end liberado no CORS | `http://127.0.0.1:5500` |
+| `COOKIE_SECURE` | Use `true` quando o front-end e a API estiverem em endereços HTTPS diferentes (Codespaces) | `false` |
+| `PORT` | Porta da API | `5000` |
+| `FLASK_DEBUG` | Modo debug (`true` ou `false`) | `false` |
+
+Se você criou o usuário e a senha exatamente como na etapa 2, não precisa definir as variáveis `PORTFOLIO_DB_*`. Não publique senhas ou chaves secretas no repositório.
 
 Entre na pasta do back-end:
 
@@ -131,16 +152,17 @@ python -m http.server 5500
 
 ### Conectar o front-end ao back-end
 
-O JavaScript do projeto precisa utilizar o endereço atual da API, encaminhado pela porta **5000**.
+O arquivo `js/script.js` define o endereço da API na linha 2:
 
-1. Abra o arquivo `js/script.js`.
-2. Localize a configuração da URL da API que ainda contém o texto de exemplo `https://SEU-CODESPACE-5000.app.github.dev`.
-3. Substitua esse endereço pelo endereço real encaminhado pelo Codespaces para a porta **5000**, mantendo o restante do código.
-4. Salve o arquivo e atualize a página do portfólio.
+```js
+const API = window.PORTFOLIO_API_URL || "http://127.0.0.1:5000";
+```
+
+Rodando localmente, esse valor padrão já funciona. No Codespaces, troque `"http://127.0.0.1:5000"` pelo endereço encaminhado para a porta **5000**, salve o arquivo e atualize a página do portfólio.
 
 O endereço da porta **5500** é o front-end; o endereço da porta **5000** é o back-end. São endereços diferentes.
 
-**Atenção ao CORS:** o back-end precisa permitir a origem usada pelo front-end. Se o projeto estiver configurado para utilizar a variável `FRONTEND_ORIGIN`, configure-a com o endereço completo encaminhado para a porta **5500**, antes de iniciar o Flask. Se alterar essa configuração, reinicie o back-end.
+**Atenção ao CORS:** o back-end precisa permitir a origem usada pelo front-end. Configure a variável `FRONTEND_ORIGIN` com o endereço completo encaminhado para a porta **5500**, antes de iniciar o Flask. Se alterar essa configuração, reinicie o back-end.
 
 ## Observações
 
@@ -151,11 +173,11 @@ O endereço da porta **5500** é o front-end; o endereço da porta **5000** é o
 - Não compartilhe nem envie ao GitHub senhas do banco de dados, chaves secretas ou outras credenciais.
 - O Codespaces precisa permanecer ativo para que o front-end e a API continuem disponíveis.
 - Mantenha os dois terminais abertos: um executando o Flask (porta 5000) e outro servindo o front-end (porta 5500).
-- Os endereços encaminhados pelo Codespaces podem mudar. Quando isso acontecer, confira a URL da API no `js/script.js` e a origem permitida pelo CORS.
+- Os endereços encaminhados pelo Codespaces podem mudar. Quando isso acontecer, confira a URL da API no `js/script.js` e a variável `FRONTEND_ORIGIN`.
 
 ## Rotas da API
 
-As rotas abaixo representam as operações disponibilizadas pelo back-end do projeto:
+As rotas abaixo representam as operações disponibilizadas pelo back-end do projeto. `POST`, `PUT` e `DELETE` de projetos, `GET /mensagens` e `POST /admin/logout` exigem login de administrador; `GET /projetos` e `POST /mensagens` são públicas.
 
 | Método | Rota | Função |
 |---|---|---|
@@ -166,6 +188,9 @@ As rotas abaixo representam as operações disponibilizadas pelo back-end do pro
 | DELETE | `/projetos/<id>` | Excluir projeto |
 | GET | `/mensagens` | Consultar mensagens |
 | POST | `/mensagens` | Enviar mensagem |
+| POST | `/admin/login` | Entrar na área administrativa |
+| GET | `/admin/status` | Verificar se há sessão de administrador |
+| POST | `/admin/logout` | Sair da área administrativa |
 
 ## Como testar
 
@@ -173,4 +198,4 @@ As rotas abaixo representam as operações disponibilizadas pelo back-end do pro
 - **Thunder Client ou Postman:** utilize para testar as requisições `POST`, `PUT` e `DELETE`, enviando os dados no formato JSON quando necessário.
 - **Pelo site:** com o back-end em execução e a URL da API configurada corretamente no JavaScript, teste o envio do formulário de contato e a visualização dos projetos.
 
-Para operações de cadastro, edição, exclusão e consulta administrativa, utilize as regras de acesso implementadas no próprio back-end.
+Para testar as rotas protegidas, faça login pela página `pages/admin.html` (ou em `POST /admin/login`, enviando `{"senha": "..."}`) e envie o token recebido no cabeçalho `X-CSRF-Token` nas requisições que alteram dados.

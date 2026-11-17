@@ -8,6 +8,13 @@ class Cep:
         self.cidade = cidade
         self.uf = uf
 
+    def exibir_endereco(self):
+        # Devolve o endereço em uma linha de texto legível.
+        return (
+            f"{self.rua}, {self.bairro} - "
+            f"{self.cidade}/{self.uf} (CEP {self.cep})"
+        )
+
     def to_dict(self):
         # Converte o objeto em um dicionário para devolver em JSON.
         return {
@@ -48,6 +55,10 @@ class Mensagem:
         self.texto = texto
         self.data_envio = data_envio
         self.cep = cep
+
+    def exibir_mensagem(self):
+        # Devolve a mensagem em uma linha de texto legível.
+        return f"{self.nome} ({self.email}): {self.texto}"
 
     def to_dict(self):
         # Converte a mensagem em JSON para devolver pela API.
