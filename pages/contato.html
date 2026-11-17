@@ -4,15 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contato</title>
+
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet"/>
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
 
+    <!-- Navegação para as demais páginas do portfólio. -->
     <header class="header">
         <a href="../index.html" class="logo">
             Felipe <span>Miranda</span>
         </a>
+
         <i class="bx bx-menu" id="menu-icon"></i>
 
         <nav class="navbar">
@@ -25,49 +28,105 @@
         <button class="gradient-btn">Entre em Contato</button>
     </header>
 
+    <!-- Formulário de contato com busca de endereço pelo CEP. -->
     <main>
         <section class="contact" id="contact">
-            <h2 class="heading">Entre em <span>Contato</span></h2>
+            <h2 class="heading">
+                Entre em <span>Contato</span>
+            </h2>
 
-            <form action="#">
+            <form id="form-contato">
+
                 <div class="input-group">
                     <div class="input-box" style="width:100%">
-                        <input type="text" placeholder="Nome completo" required minlength="3">
+                        <input
+                            type="text"
+                            id="nome"
+                            placeholder="Nome completo"
+                            required
+                            minlength="3"
+                        >
                     </div>
+
                     <div class="input-box" style="width:100%">
-                        <input type="email" placeholder="E-mail" required>
+                        <input
+                            type="email"
+                            id="email"
+                            placeholder="E-mail"
+                            required
+                        >
                     </div>
                 </div>
 
                 <div class="input-group">
                     <div class="input-box" style="width:100%">
-                        <input type="text" id="cep" placeholder="CEP (ex.: 18202-000)" maxlength="9" required>
+                        <input
+                            type="text"
+                            id="cep"
+                            placeholder="CEP (ex.: 18202-000)"
+                            maxlength="9"
+                            required
+                        >
                     </div>
-                    <button type="button" id="btn-buscar-cep" class="btn">Buscar CEP</button>
+
+                    <button
+                        type="button"
+                        id="btn-buscar-cep"
+                        class="btn"
+                    >
+                        Buscar CEP
+                    </button>
                 </div>
 
                 <p id="mensagem" class="mensagem" role="status"></p>
 
                 <div class="input-group">
                     <div class="input-box" style="width:100%">
-                        <input type="text" id="rua" placeholder="Rua" readonly>
+                        <input
+                            type="text"
+                            id="rua"
+                            placeholder="Rua"
+                            readonly
+                        >
                     </div>
+
                     <div class="input-box" style="width:100%">
-                        <input type="text" id="bairro" placeholder="Bairro" readonly>
+                        <input
+                            type="text"
+                            id="bairro"
+                            placeholder="Bairro"
+                            readonly
+                        >
                     </div>
                 </div>
 
                 <div class="input-group">
                     <div class="input-box" style="width:100%">
-                        <input type="text" id="cidade" placeholder="Cidade" readonly>
+                        <input
+                            type="text"
+                            id="cidade"
+                            placeholder="Cidade"
+                            readonly
+                        >
                     </div>
+
                     <div class="input-box" style="width:100%">
-                        <input type="text" id="uf" placeholder="UF" readonly>
+                        <input
+                            type="text"
+                            id="uf"
+                            placeholder="UF"
+                            readonly
+                        >
                     </div>
                 </div>
 
                 <div class="input-group-2">
-                    <textarea rows="8" placeholder="Sua mensagem" required></textarea>
+                    <textarea
+                        id="texto"
+                        rows="8"
+                        placeholder="Sua mensagem"
+                        required
+                    ></textarea>
                 </div>
 
                 <button type="submit" class="btn">Enviar</button>
@@ -77,6 +136,9 @@
 
     <footer class="footer">
         <p>Portifólio - Felipe Miranda</p>
+        <a href="admin.html" class="link-admin">
+            Área administrativa
+        </a>
     </footer>
 
     <script src="../js/script.js"></script>

@@ -1,48 +1,99 @@
-from flask import Flask, request, jsonify
+import hmac
+import os
+import secrets
+
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from mysql.connector import Error
 
-# Importa as classes que acessam os dados do banco e os modelos de negócio.
 from dao import ProjetoDAO, MensagemDAO
 from models import Projeto, Mensagem
 
-# Cria a aplicação Flask e habilita o acesso vindo do frontend.
 app = Flask(__name__)
-CORS(app)
+# Define a chave usada para proteger os dados da sessão.
+app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
-# Cria os objetos DAO para separar a lógica de banco da lógica da API.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
+
+ORIGEM_FRONTEND = os.getenv(
+    "FRONTEND_ORIGIN",
+    "http://127.0.0.1:5500"
+)
+
+# Permite requisições do frontend configurado.
+CORS(app, supports_credentials=True, origins=[ORIGEM_FRONTEND])
+
+SENHA_ADMIN = os.getenv("ADMIN_PASSWORD")
+
+
+def administrador_logado():
+    return session.get("administrador") is True
+
+
+# Protege operações administrativas com sessão e token CSRF.
+def proteger_requisicao():
+    if not administrador_logado():
+        return jsonify({
+            "mensagem": "Acesso não autorizado. Faça login."
+        }), 401
+
+    token_enviado = request.headers.get("X-CSRF-Token", "")
+    token_salvo = session.get("csrf_token", "")
+
+    if not token_salvo or not hmac.compare_digest(
+        token_enviado, token_salvo
+    ):
+        return jsonify({
+            "mensagem": "Requisição não autorizada."
+        }), 403
+
+    return None
+
+
 projeto_dao = ProjetoDAO()
 mensagem_dao = MensagemDAO()
 
 
 @app.route("/", methods=["GET"])
 def inicio():
-    # Endpoint simples para confirmar que a API está funcionando.
-    return jsonify({"mensagem": "API do Portfólio funcionando!"})
+    return jsonify({
+        "mensagem": "API do Portfólio funcionando!"
+    })
 
 
-# Rotas para listar, cadastrar, atualizar e excluir projetos.
+# Consulta pública dos projetos disponíveis.
 @app.route("/projetos", methods=["GET"])
 def listar_projetos():
-    # Busca todos os projetos no banco e transforma em JSON.
     projetos = projeto_dao.listar()
-    return jsonify([projeto.to_dict() for projeto in projetos])
+
+    return jsonify([
+        projeto.to_dict() for projeto in projetos
+    ])
 
 
 @app.route("/projetos", methods=["POST"])
 def cadastrar_projeto():
-    # Lê os dados enviados no corpo da requisição em JSON.
+    bloqueio = proteger_requisicao()
+
+    if bloqueio:
+        return bloqueio
+
     dados = request.get_json(silent=True)
 
-    # Valida se os campos essenciais foram preenchidos.
-    if not isinstance(dados, dict) or not dados.get("titulo") or not dados.get("descricao"):
-        return jsonify({"mensagem": "Informe título e descrição do projeto."}), 400
+    if (
+        not isinstance(dados, dict)
+        or not dados.get("titulo")
+        or not dados.get("descricao")
+    ):
+        return jsonify({
+            "mensagem": "Informe título e descrição do projeto."
+        }), 400
 
-    # Cria o objeto Projeto com os dados recebidos.
     projeto = Projeto.from_dict(dados)
     id_projeto = projeto_dao.cadastrar(projeto)
 
-    # Retorna uma resposta de sucesso com o ID do novo projeto.
     return jsonify({
         "mensagem": "Projeto cadastrado com sucesso!",
         "id_projeto": id_projeto
@@ -51,64 +102,148 @@ def cadastrar_projeto():
 
 @app.route("/projetos/<int:id_projeto>", methods=["PUT"])
 def atualizar_projeto(id_projeto):
-    # Recebe os dados para alterar um projeto existente.
+    bloqueio = proteger_requisicao()
+
+    if bloqueio:
+        return bloqueio
+
     dados = request.get_json(silent=True)
 
-    # Garante que o título e a descrição sejam enviados.
-    if not isinstance(dados, dict) or not dados.get("titulo") or not dados.get("descricao"):
-        return jsonify({"mensagem": "Informe título e descrição do projeto."}), 400
+    if (
+        not isinstance(dados, dict)
+        or not dados.get("titulo")
+        or not dados.get("descricao")
+    ):
+        return jsonify({
+            "mensagem": "Informe título e descrição do projeto."
+        }), 400
 
-    # Cria o objeto atualizado e tenta salvar no banco.
     projeto = Projeto.from_dict(dados)
-    atualizado = projeto_dao.atualizar(id_projeto, projeto)
+
+    atualizado = projeto_dao.atualizar(
+        id_projeto, projeto
+    )
 
     if atualizado:
-        return jsonify({"mensagem": "Projeto atualizado com sucesso!"})
+        return jsonify({
+            "mensagem": "Projeto atualizado com sucesso!"
+        })
 
-    return jsonify({"mensagem": "Projeto não encontrado!"}), 404
+    return jsonify({
+        "mensagem": "Projeto não encontrado!"
+    }), 404
 
 
 @app.route("/projetos/<int:id_projeto>", methods=["DELETE"])
 def excluir_projeto(id_projeto):
-    # Remove o projeto pelo ID informado.
+    bloqueio = proteger_requisicao()
+
+    if bloqueio:
+        return bloqueio
+
     excluido = projeto_dao.excluir(id_projeto)
 
     if excluido:
-        return jsonify({"mensagem": "Projeto excluído com sucesso!"})
+        return jsonify({
+            "mensagem": "Projeto excluído com sucesso!"
+        })
 
-    return jsonify({"mensagem": "Projeto não encontrado!"}), 404
+    return jsonify({
+        "mensagem": "Projeto não encontrado!"
+    }), 404
 
 
-# Rotas para listar e cadastrar mensagens de contato.
+# Autenticação e sessão do administrador.
+@app.route("/admin/login", methods=["POST"])
+def login_admin():
+    dados = request.get_json(silent=True) or {}
+    senha_digitada = str(dados.get("senha", ""))
+
+    if not SENHA_ADMIN:
+        return jsonify({
+            "mensagem": "Configure o segredo ADMIN_PASSWORD no Codespaces."
+        }), 503
+
+    if not hmac.compare_digest(senha_digitada, SENHA_ADMIN):
+        return jsonify({
+            "mensagem": "Senha incorreta."
+        }), 401
+
+    session.clear()
+    session["administrador"] = True
+    session["csrf_token"] = secrets.token_hex(32)
+
+    return jsonify({
+        "mensagem": "Login realizado com sucesso!",
+        "csrf_token": session["csrf_token"]
+    })
+
+
+@app.route("/admin/status", methods=["GET"])
+def status_admin():
+    if not administrador_logado():
+        return jsonify({
+            "autenticado": False
+        }), 401
+
+    return jsonify({
+        "autenticado": True,
+        "csrf_token": session.get("csrf_token")
+    })
+
+
+@app.route("/admin/logout", methods=["POST"])
+def logout_admin():
+    bloqueio = proteger_requisicao()
+
+    if bloqueio:
+        return bloqueio
+
+    session.clear()
+
+    return jsonify({
+        "mensagem": "Sessão encerrada."
+    })
+
+
+# Rotas de envio e consulta das mensagens de contato.
 @app.route("/mensagens", methods=["GET"])
 def listar_mensagens():
-    # Busca todas as mensagens e as devolve em formato JSON.
+    bloqueio = proteger_requisicao()
+
+    if bloqueio:
+        return bloqueio
+
     mensagens = mensagem_dao.listar()
-    return jsonify([mensagem.to_dict() for mensagem in mensagens])
+
+    return jsonify([
+        mensagem.to_dict() for mensagem in mensagens
+    ])
 
 
 @app.route("/mensagens", methods=["POST"])
 def cadastrar_mensagem():
-    # Lê a mensagem enviada pelo formulário ou cliente.
     dados = request.get_json(silent=True)
 
     if not isinstance(dados, dict):
-        return jsonify({"mensagem": "Envie os dados da mensagem em JSON."}), 400
+        return jsonify({
+            "mensagem": "Envie os dados da mensagem em JSON."
+        }), 400
 
-    # Cria o objeto Mensagem com os dados recebidos.
     mensagem = Mensagem.from_dict(dados)
 
-    # Verifica se os campos principais foram preenchidos.
     if not mensagem.nome or not mensagem.email or not mensagem.texto:
-        return jsonify({"mensagem": "Preencha nome, e-mail e mensagem."}), 400
+        return jsonify({
+            "mensagem": "Preencha nome, e-mail e mensagem."
+        }), 400
 
-    # Valida o CEP informado antes de salvar.
     if not mensagem.cep.cep or len(mensagem.cep.cep) != 8:
-        return jsonify({"mensagem": "Informe um CEP válido com 8 números."}), 400
+        return jsonify({
+            "mensagem": "Informe um CEP válido com 8 números."
+        }), 400
 
     id_mensagem = mensagem_dao.cadastrar(mensagem)
 
-    # Responde com sucesso após salvar a mensagem.
     return jsonify({
         "mensagem": "Mensagem enviada com sucesso!",
         "id": id_mensagem
@@ -117,10 +252,14 @@ def cadastrar_mensagem():
 
 @app.errorhandler(Error)
 def erro_banco(error):
-    # Captura erros de conexão com o banco e responde ao cliente.
-    return jsonify({"mensagem": "Não foi possível acessar o banco de dados."}), 500
+    return jsonify({
+        "mensagem": "Não foi possível acessar o banco de dados."
+    }), 500
 
 
 if __name__ == "__main__":
-    # Inicia o servidor Flask em modo de desenvolvimento.
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=True
+    )

@@ -1,123 +1,560 @@
-// Seleciona os elementos do menu mobile
-let menuIcon = document.querySelector('#menu-icon');
-let navbar = document.querySelector('.navbar');
+// Endereço da API Flask.
+const API = "https://SEU-CODESPACE-5000.app.github.dev";
 
-// Abre/fecha o menu ao clicar no ícone
-menuIcon.onclick = () => {
-    menuIcon.classList.toggle('bx-x');
-    navbar.classList.toggle('active');
+// Elementos usados em mais de uma página.
+const menuIcon = document.querySelector('#menu-icon');
+const navbar = document.querySelector('.navbar');
+let tokenCSRF = "";
+
+// Menu para dispositivos menores.
+if (menuIcon && navbar) {
+    menuIcon.onclick = () => {
+        menuIcon.classList.toggle('bx-x');
+        navbar.classList.toggle('active');
+    };
 }
 
-// Busca os campos de CEP e os elementos da mensagem
+// Faz requisições para a API.
+async function requisicaoAPI(caminho, opcoes = {}) {
+    const cabecalhos = { ...(opcoes.headers || {}) };
+
+    if (opcoes.body) {
+        cabecalhos["Content-Type"] = "application/json";
+    }
+
+    if (tokenCSRF && opcoes.method && opcoes.method !== "GET") {
+        cabecalhos["X-CSRF-Token"] = tokenCSRF;
+    }
+
+    const resposta = await fetch(`${API}${caminho}`, {
+        ...opcoes,
+        headers: cabecalhos,
+        credentials: "include"
+    });
+
+    const dados = await resposta.json().catch(() => ({}));
+
+    if (!resposta.ok) {
+        throw new Error(
+            dados.mensagem || "Não foi possível concluir a solicitação."
+        );
+    }
+
+    return dados;
+}
+
+// Exibe mensagens de retorno.
+function mostrarStatus(elemento, texto, tipo = "") {
+    if (!elemento) return;
+
+    elemento.textContent = texto;
+    elemento.className = `status-admin ${tipo}`;
+}
+
+// Consulta o ViaCEP.
 const campoCep = document.getElementById('cep');
 const botaoCep = document.getElementById('btn-buscar-cep');
-const mensagem = document.getElementById('mensagem');
+const mensagemCep = document.getElementById('mensagem');
 
-// Mostra mensagens de status como carregando, erro ou sucesso
-function mostrarMensagem(texto, tipo) {
-    mensagem.textContent = texto;
-    mensagem.className = 'mensagem ' + tipo; // tipo: "erro", "sucesso" ou "carregando"
-}
-
-// Limpa os campos de endereço antes de preencher novamente
 function limparEndereco() {
     ['rua', 'bairro', 'cidade', 'uf'].forEach(id => {
-        document.getElementById(id).value = '';
+        const campo = document.getElementById(id);
+
+        if (campo) {
+            campo.value = '';
+        }
     });
 }
 
-// Busca o endereço completo usando a API do ViaCEP
 async function buscarCEP(cep) {
     try {
-        mostrarMensagem('Buscando CEP...', 'carregando');
-        botaoCep.disabled = true;
+        mostrarStatus(mensagemCep, 'Buscando CEP...', 'carregando');
 
-        const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        if (!resposta.ok) throw new Error('Falha na requisição');
+        if (botaoCep) {
+            botaoCep.disabled = true;
+        }
+
+        const resposta = await fetch(
+            `https://viacep.com.br/ws/${cep}/json/`
+        );
+
+        if (!resposta.ok) {
+            throw new Error('Falha na requisição');
+        }
 
         const dados = await resposta.json();
 
-        // O ViaCEP responde 200 com {"erro": true} quando o CEP não existe
         if (dados.erro) {
             limparEndereco();
-            mostrarMensagem('CEP não encontrado. Confira os números e tente de novo.', 'erro');
+
+            mostrarStatus(
+                mensagemCep,
+                'CEP não encontrado. Confira os números e tente novamente.',
+                'erro'
+            );
+
             return;
         }
 
-        // Preenche os campos do endereço com os dados retornados pela API
-        document.getElementById('rua').value = dados.logradouro;
-        document.getElementById('bairro').value = dados.bairro;
-        document.getElementById('cidade').value = dados.localidade;
-        document.getElementById('uf').value = dados.uf;
-        mostrarMensagem('Endereço preenchido com sucesso!', 'sucesso');
+        document.getElementById('rua').value =
+            dados.logradouro || '';
+
+        document.getElementById('bairro').value =
+            dados.bairro || '';
+
+        document.getElementById('cidade').value =
+            dados.localidade || '';
+
+        document.getElementById('uf').value =
+            dados.uf || '';
+
+        mostrarStatus(
+            mensagemCep,
+            'Endereço preenchido com sucesso!',
+            'sucesso'
+        );
+
     } catch (erro) {
-        console.error('Falha ao buscar o CEP:', erro);
         limparEndereco();
-        mostrarMensagem('Não foi possível buscar o CEP agora. Verifique sua conexão e tente novamente.', 'erro');
+
+        mostrarStatus(
+            mensagemCep,
+            'Não foi possível buscar o CEP. Tente novamente.',
+            'erro'
+        );
+
     } finally {
-        botaoCep.disabled = false;
+        if (botaoCep) {
+            botaoCep.disabled = false;
+        }
     }
 }
 
-// Valida e inicia a busca do CEP digitado pelo usuário
-function iniciarBusca() {
-    const cep = campoCep.value.replace(/\D/g, ''); // deixa só os números
+function iniciarBuscaCEP() {
+    const cep = campoCep.value.replace(/\D/g, '');
 
     if (cep.length !== 8) {
         limparEndereco();
-        mostrarMensagem('Digite um CEP com 8 números.', 'erro');
+
+        mostrarStatus(
+            mensagemCep,
+            'Digite um CEP com 8 números.',
+            'erro'
+        );
+
         return;
     }
+
     buscarCEP(cep);
 }
 
-// Dispara a busca ao clicar no botão ou ao sair do campo de CEP
-if (campoCep) {
-    botaoCep.addEventListener('click', iniciarBusca);
+if (campoCep && botaoCep) {
+    botaoCep.addEventListener('click', iniciarBuscaCEP);
+
     campoCep.addEventListener('blur', () => {
-        if (campoCep.value.trim() !== '') iniciarBusca();
+        if (campoCep.value.trim() !== '') {
+            iniciarBuscaCEP();
+        }
     });
 }
 
-// URL da API local do backend
-const API = "http://127.0.0.1:5000";
-
-// Busca os projetos na API backend e exibe no console
+// Carrega os projetos na página Serviços.
 async function carregarProjetos() {
-    try {
-        const resposta = await fetch(`${API}/projetos`);
+    const lista = document.getElementById('lista-projetos');
 
-        if (!resposta.ok) {
-            throw new Error("Erro ao buscar projetos");
+    if (!lista) return;
+
+    lista.innerHTML = '';
+
+    try {
+        const projetos = await requisicaoAPI('/projetos');
+
+        if (projetos.length === 0) {
+            lista.textContent =
+                'Nenhum projeto cadastrado no momento.';
+
+            return;
         }
 
-        const projetos = await resposta.json();
+        projetos.forEach(projeto => {
+            const card = document.createElement('div');
+            card.className = 'service-box projeto-card';
 
-        console.log(projetos);
+            const conteudo = document.createElement('div');
+            conteudo.className = 'service-info';
+
+            const titulo = document.createElement('h4');
+            titulo.textContent = projeto.titulo;
+
+            const descricao = document.createElement('p');
+            descricao.textContent = projeto.descricao;
+
+            conteudo.append(titulo, descricao);
+
+            if (projeto.imagem) {
+                const imagem = document.createElement('img');
+
+                imagem.src = projeto.imagem;
+                imagem.alt = projeto.titulo;
+                imagem.className = 'imagem-projeto';
+
+                conteudo.prepend(imagem);
+            }
+
+            if (projeto.link) {
+                const link = document.createElement('a');
+
+                link.href = projeto.link;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = 'Ver projeto';
+                link.className = 'btn';
+
+                conteudo.appendChild(link);
+            }
+
+            card.appendChild(conteudo);
+            lista.appendChild(card);
+        });
 
     } catch (erro) {
-        console.error("Erro:", erro);
+        lista.textContent =
+            `Não foi possível carregar os projetos: ${erro.message}`;
     }
 }
 
-// Chama a função ao carregar a página
+// Envia o formulário de contato para o Flask.
+const formularioContato = document.querySelector('#form-contato');
+
+if (formularioContato) {
+    formularioContato.addEventListener('submit', async evento => {
+        evento.preventDefault();
+
+        const status = document.getElementById('mensagem');
+
+        const dados = {
+            nome: document.getElementById('nome').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            texto: document.getElementById('texto').value.trim(),
+
+            cep: {
+                cep: document.getElementById('cep').value.replace(/\D/g, ''),
+                rua: document.getElementById('rua').value,
+                bairro: document.getElementById('bairro').value,
+                cidade: document.getElementById('cidade').value,
+                uf: document.getElementById('uf').value
+            }
+        };
+
+        try {
+            const resultado = await requisicaoAPI('/mensagens', {
+                method: 'POST',
+                body: JSON.stringify(dados)
+            });
+
+            mostrarStatus(
+                status,
+                resultado.mensagem,
+                'sucesso'
+            );
+
+            formularioContato.reset();
+            limparEndereco();
+
+        } catch (erro) {
+            mostrarStatus(status, erro.message, 'erro');
+        }
+    });
+}
+
+// Funções da área administrativa.
+const formularioLogin = document.getElementById('form-login');
+const painelAdmin = document.getElementById('painel-admin');
+const formularioProjeto = document.getElementById('form-projeto');
+const statusAdmin = document.getElementById('status-admin');
+
+let idProjetoEdicao = null;
+
+function mostrarPainel(autenticado) {
+    if (formularioLogin) {
+        formularioLogin.hidden = autenticado;
+    }
+
+    if (painelAdmin) {
+        painelAdmin.hidden = !autenticado;
+    }
+}
+
+// Carrega projetos e mensagens no painel administrativo.
+async function carregarDadosAdmin() {
+    const listaAdmin =
+        document.getElementById('lista-admin-projetos');
+
+    const listaMensagens =
+        document.getElementById('lista-mensagens');
+
+    if (listaAdmin) {
+        listaAdmin.innerHTML = '';
+
+        const projetos = await requisicaoAPI('/projetos');
+
+        projetos.forEach(projeto => {
+            const item = document.createElement('div');
+            item.className = 'admin-item';
+
+            const titulo = document.createElement('strong');
+            titulo.textContent = projeto.titulo;
+
+            const descricao = document.createElement('p');
+            descricao.textContent = projeto.descricao;
+
+            const editar = document.createElement('button');
+            editar.type = 'button';
+            editar.className = 'btn';
+            editar.textContent = 'Editar';
+
+            editar.addEventListener('click', () => {
+                idProjetoEdicao = projeto.id_projeto;
+
+                document.getElementById('titulo-projeto').value =
+                    projeto.titulo || '';
+
+                document.getElementById('descricao-projeto').value =
+                    projeto.descricao || '';
+
+                document.getElementById('imagem-projeto').value =
+                    projeto.imagem || '';
+
+                document.getElementById('categoria-projeto').value =
+                    projeto.categoria || '';
+
+                document.getElementById('link-projeto').value =
+                    projeto.link || '';
+
+                document.getElementById(
+                    'botao-salvar-projeto'
+                ).textContent = 'Salvar alterações';
+            });
+
+            const excluir = document.createElement('button');
+            excluir.type = 'button';
+            excluir.className = 'btn btn-secundario';
+            excluir.textContent = 'Excluir';
+
+            excluir.addEventListener('click', async () => {
+                if (!confirm(
+                    `Deseja excluir o projeto "${projeto.titulo}"?`
+                )) {
+                    return;
+                }
+
+                try {
+                    await requisicaoAPI(
+                        `/projetos/${projeto.id_projeto}`,
+                        { method: 'DELETE' }
+                    );
+
+                    mostrarStatus(
+                        statusAdmin,
+                        'Projeto excluído com sucesso!',
+                        'sucesso'
+                    );
+
+                    await carregarDadosAdmin();
+
+                } catch (erro) {
+                    mostrarStatus(
+                        statusAdmin,
+                        erro.message,
+                        'erro'
+                    );
+                }
+            });
+
+            item.append(titulo, descricao, editar, excluir);
+            listaAdmin.appendChild(item);
+        });
+    }
+
+    if (listaMensagens) {
+        listaMensagens.innerHTML = '';
+
+        const mensagens = await requisicaoAPI('/mensagens');
+
+        if (mensagens.length === 0) {
+            listaMensagens.textContent =
+                'Nenhuma mensagem recebida.';
+        }
+
+        mensagens.forEach(mensagem => {
+            const item = document.createElement('div');
+            item.className = 'admin-item';
+
+            const titulo = document.createElement('strong');
+            titulo.textContent =
+                `${mensagem.nome} — ${mensagem.email}`;
+
+            const texto = document.createElement('p');
+            texto.textContent = mensagem.texto;
+
+            const endereco = document.createElement('p');
+            const cep = mensagem.cep || {};
+
+            endereco.textContent =
+                `CEP: ${cep.cep || ''} | ${cep.rua || ''}, ` +
+                `${cep.bairro || ''} - ${cep.cidade || ''}/${cep.uf || ''}`;
+
+            item.append(titulo, texto, endereco);
+            listaMensagens.appendChild(item);
+        });
+    }
+}
+
+// Login administrativo.
+if (formularioLogin) {
+    formularioLogin.addEventListener('submit', async evento => {
+        evento.preventDefault();
+
+        try {
+            const senha =
+                document.getElementById('senha-admin').value;
+
+            const resultado = await requisicaoAPI('/admin/login', {
+                method: 'POST',
+                body: JSON.stringify({ senha })
+            });
+
+            tokenCSRF = resultado.csrf_token;
+
+            mostrarPainel(true);
+
+            mostrarStatus(
+                statusAdmin,
+                resultado.mensagem,
+                'sucesso'
+            );
+
+            formularioLogin.reset();
+
+            await carregarDadosAdmin();
+
+        } catch (erro) {
+            mostrarStatus(
+                statusAdmin,
+                erro.message,
+                'erro'
+            );
+        }
+    });
+
+    // Verifica se já existe uma sessão administrativa.
+    requisicaoAPI('/admin/status')
+        .then(resultado => {
+            tokenCSRF = resultado.csrf_token;
+
+            mostrarPainel(true);
+
+            carregarDadosAdmin().catch(erro => {
+                mostrarStatus(statusAdmin, erro.message, 'erro');
+            });
+        })
+        .catch(() => mostrarPainel(false));
+}
+
+// Cadastro e edição de projetos.
+if (formularioProjeto) {
+    formularioProjeto.addEventListener('submit', async evento => {
+        evento.preventDefault();
+
+        const dados = {
+            titulo: document.getElementById('titulo-projeto').value.trim(),
+            descricao: document.getElementById('descricao-projeto').value.trim(),
+            imagem: document.getElementById('imagem-projeto').value.trim(),
+            categoria: document.getElementById('categoria-projeto').value.trim(),
+            link: document.getElementById('link-projeto').value.trim()
+        };
+
+        try {
+            const caminho = idProjetoEdicao
+                ? `/projetos/${idProjetoEdicao}`
+                : '/projetos';
+
+            const metodo = idProjetoEdicao ? 'PUT' : 'POST';
+
+            const resultado = await requisicaoAPI(caminho, {
+                method: metodo,
+                body: JSON.stringify(dados)
+            });
+
+            mostrarStatus(
+                statusAdmin,
+                resultado.mensagem,
+                'sucesso'
+            );
+
+            formularioProjeto.reset();
+            idProjetoEdicao = null;
+
+            document.getElementById(
+                'botao-salvar-projeto'
+            ).textContent = 'Cadastrar projeto';
+
+            await carregarDadosAdmin();
+
+        } catch (erro) {
+            mostrarStatus(
+                statusAdmin,
+                erro.message,
+                'erro'
+            );
+        }
+    });
+}
+
+// Cancela a edição de um projeto.
+const botaoCancelarEdicao =
+    document.getElementById('cancelar-edicao');
+
+if (botaoCancelarEdicao) {
+    botaoCancelarEdicao.addEventListener('click', () => {
+        formularioProjeto.reset();
+        idProjetoEdicao = null;
+
+        document.getElementById(
+            'botao-salvar-projeto'
+        ).textContent = 'Cadastrar projeto';
+    });
+}
+
+// Encerra a sessão administrativa.
+const botaoSair = document.getElementById('sair-admin');
+
+if (botaoSair) {
+    botaoSair.addEventListener('click', async () => {
+        try {
+            await requisicaoAPI('/admin/logout', {
+                method: 'POST'
+            });
+
+            tokenCSRF = '';
+
+            mostrarPainel(false);
+
+            mostrarStatus(
+                statusAdmin,
+                'Você saiu da área administrativa.',
+                'sucesso'
+            );
+
+        } catch (erro) {
+            mostrarStatus(
+                statusAdmin,
+                erro.message,
+                'erro'
+            );
+        }
+    });
+}
+
+// Executa as funções correspondentes à página aberta.
 carregarProjetos();
-
-const lista = document.getElementById("lista-projetos");
-
-lista.innerHTML = "";
-
-projetos.forEach(projeto => {
-    const card = document.createElement("div");
-
-    card.classList.add("service-box");
-
-    card.innerHTML = `
-        <div class="service-info">
-            <h4>${projeto.titulo}</h4>
-            <p>${projeto.descricao}</p>
-        </div>
-    `;
-
-    lista.appendChild(card);
-});

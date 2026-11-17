@@ -120,3 +120,4 @@ As rotas GET podem ser testadas diretamente pelo navegador, utilizando a URL enc
 As rotas POST, PUT e DELETE devem ser testadas por uma ferramenta de requisições HTTP, como Thunder Client ou Postman, enviando os dados necessários no formato JSON.
 
 **Observação:** substitua `<id>` pelo identificador do projeto que deseja consultar, editar ou excluir.
+

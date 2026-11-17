@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Área Administrativa</title>
+
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <!-- Navegação para as demais páginas do portfólio. -->
+    <header class="header">
+        <a href="../index.html" class="logo">
+            Felipe <span>Miranda</span>
+        </a>
+
+        <i class="bx bx-menu" id="menu-icon"></i>
+
+        <nav class="navbar">
+            <a href="../index.html">Home</a>
+            <a href="sobre.html">Sobre</a>
+            <a href="servicos.html">Serviços</a>
+            <a href="contato.html">Contato</a>
+        </nav>
+
+        <a href="../index.html" class="gradient-btn">
+            Voltar ao site
+        </a>
+    </header>
+
+    <!-- Login e ferramentas de gerenciamento do portfólio. -->
+    <main class="admin-main">
+        <section class="admin-section">
+            <h2 class="heading">
+                Área <span>Administrativa</span>
+            </h2>
+
+            <p class="admin-intro">
+                Entre para gerenciar os projetos e consultar as mensagens recebidas.
+            </p>
+
+            <form id="form-login" class="admin-form">
+                <h3>Login do administrador</h3>
+
+                <input
+                    type="password"
+                    id="senha-admin"
+                    placeholder="Digite sua senha"
+                    required
+                    autocomplete="current-password"
+                >
+
+                <button type="submit" class="btn">Entrar</button>
+            </form>
+
+            <p id="status-admin" class="status-admin" role="status"></p>
+
+            <div id="painel-admin" hidden>
+
+                <div class="admin-topo">
+                    <h3>Gerenciar portfólio</h3>
+
+                    <button
+                        type="button"
+                        id="sair-admin"
+                        class="btn btn-secundario"
+                    >
+                        Sair
+                    </button>
+                </div>
+
+                <form id="form-projeto" class="admin-form">
+                    <h3>Cadastrar ou editar projeto</h3>
+
+                    <input
+                        type="text"
+                        id="titulo-projeto"
+                        placeholder="Título do projeto"
+                        required
+                        maxlength="100"
+                    >
+
+                    <textarea
+                        id="descricao-projeto"
+                        rows="4"
+                        placeholder="Descrição do projeto"
+                        required
+                    ></textarea>
+
+                    <input
+                        type="text"
+                        id="imagem-projeto"
+                        placeholder="Caminho ou URL da imagem"
+                    >
+
+                    <input
+                        type="text"
+                        id="categoria-projeto"
+                        placeholder="Categoria"
+                    >
+
+                    <input
+                        type="url"
+                        id="link-projeto"
+                        placeholder="Link do projeto (https://...)"
+                    >
+
+                    <div class="admin-botoes">
+                        <button
+                            type="submit"
+                            id="botao-salvar-projeto"
+                            class="btn"
+                        >
+                            Cadastrar projeto
+                        </button>
+
+                        <button
+                            type="button"
+                            id="cancelar-edicao"
+                            class="btn btn-secundario"
+                        >
+                            Limpar
+                        </button>
+                    </div>
+                </form>
+
+                <div class="admin-lista">
+                    <h3>Projetos cadastrados</h3>
+                    <div id="lista-admin-projetos"></div>
+                </div>
+
+                <div class="admin-lista">
+                    <h3>Mensagens recebidas</h3>
+                    <div id="lista-mensagens"></div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Portifólio - Felipe Miranda</p>
+    </footer>
+
+    <script src="../js/script.js"></script>
+</body>
+</html>
