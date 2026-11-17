@@ -1,5 +1,5 @@
 // Endereço da API Flask.
-const API = "https://SEU-CODESPACE-5000.app.github.dev";
+const API = window.PORTFOLIO_API_URL || "http://127.0.0.1:5000";
 
 // Elementos usados em mais de uma página.
 const menuIcon = document.querySelector('#menu-icon');

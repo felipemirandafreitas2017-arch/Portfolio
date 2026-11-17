@@ -20,9 +20,12 @@ class CepDAO:
         return mysql.connector.connect(**DB_CONFIG)
 
     # Busca um endereço pelo CEP informado.
-    def buscar(self, numero_cep):
-        conexao = self.conectar()
-        cursor = conexao.cursor()
+    def buscar(self, numero_cep, cursor=None):
+        conexao = None
+
+        if cursor is None:
+            conexao = self.conectar()
+            cursor = conexao.cursor()
 
         try:
             cursor.execute(
@@ -37,12 +40,16 @@ class CepDAO:
 
             return None
         finally:
-            cursor.close()
-            conexao.close()
+            if conexao:
+                cursor.close()
+                conexao.close()
 
-    def cadastrar(self, cep):
-        conexao = self.conectar()
-        cursor = conexao.cursor()
+    def cadastrar(self, cep, cursor=None):
+        conexao = None
+
+        if cursor is None:
+            conexao = self.conectar()
+            cursor = conexao.cursor()
 
         try:
             cursor.execute(
@@ -53,15 +60,20 @@ class CepDAO:
                 (cep.cep, cep.rua, cep.bairro, cep.cidade, cep.uf)
             )
 
-            conexao.commit()
+            if conexao:
+                conexao.commit()
         finally:
-            cursor.close()
-            conexao.close()
+            if conexao:
+                cursor.close()
+                conexao.close()
 
 
 class MensagemDAO:
     def conectar(self):
         return mysql.connector.connect(**DB_CONFIG)
+
+    def __init__(self):
+        self.cep_dao = CepDAO()
 
     # Salva o endereço e a mensagem na mesma transação.
     def cadastrar(self, mensagem):
@@ -69,27 +81,12 @@ class MensagemDAO:
         cursor = conexao.cursor()
 
         try:
-            cursor.execute(
-                "SELECT cep FROM cep WHERE cep = %s",
-                (mensagem.cep.cep,)
+            cep_existente = self.cep_dao.buscar(
+                mensagem.cep.cep, cursor
             )
 
-            cep_existente = cursor.fetchone()
-
             if cep_existente is None:
-                cursor.execute(
-                    """
-                    INSERT INTO cep (cep, rua, bairro, cidade, uf)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-                    (
-                        mensagem.cep.cep,
-                        mensagem.cep.rua,
-                        mensagem.cep.bairro,
-                        mensagem.cep.cidade,
-                        mensagem.cep.uf
-                    )
-                )
+                self.cep_dao.cadastrar(mensagem.cep, cursor)
 
             cursor.execute(
                 """

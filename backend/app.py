@@ -14,8 +14,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SECURE"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "None"
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
+app.config["SESSION_COOKIE_SECURE"] = COOKIE_SECURE
+app.config["SESSION_COOKIE_SAMESITE"] = os.getenv(
+    "COOKIE_SAMESITE", "None" if COOKIE_SECURE else "Lax"
+)
 
 ORIGEM_FRONTEND = os.getenv(
     "FRONTEND_ORIGIN",
@@ -92,6 +95,18 @@ def cadastrar_projeto():
         }), 400
 
     projeto = Projeto.from_dict(dados)
+
+    if (
+        len(projeto.titulo) > 100
+        or len(projeto.descricao) == 0
+        or len(projeto.imagem or "") > 255
+        or len(projeto.categoria or "") > 60
+        or len(projeto.link or "") > 255
+    ):
+        return jsonify({
+            "mensagem": "Verifique os campos e os limites de caracteres do projeto."
+        }), 400
+
     id_projeto = projeto_dao.cadastrar(projeto)
 
     return jsonify({
@@ -119,6 +134,17 @@ def atualizar_projeto(id_projeto):
         }), 400
 
     projeto = Projeto.from_dict(dados)
+
+    if (
+        len(projeto.titulo) > 100
+        or len(projeto.descricao) == 0
+        or len(projeto.imagem or "") > 255
+        or len(projeto.categoria or "") > 60
+        or len(projeto.link or "") > 255
+    ):
+        return jsonify({
+            "mensagem": "Verifique os campos e os limites de caracteres do projeto."
+        }), 400
 
     atualizado = projeto_dao.atualizar(
         id_projeto, projeto
@@ -237,9 +263,28 @@ def cadastrar_mensagem():
             "mensagem": "Preencha nome, e-mail e mensagem."
         }), 400
 
-    if not mensagem.cep.cep or len(mensagem.cep.cep) != 8:
+    if (
+        not mensagem.cep.cep
+        or len(mensagem.cep.cep) != 8
+        or not mensagem.cep.cep.isdigit()
+    ):
         return jsonify({
             "mensagem": "Informe um CEP válido com 8 números."
+        }), 400
+
+    if not mensagem.cep.cidade or len(mensagem.cep.uf) != 2:
+        return jsonify({
+            "mensagem": "Busque o CEP para preencher cidade e UF."
+        }), 400
+
+    if len(mensagem.nome) > 100 or len(mensagem.email) > 150:
+        return jsonify({
+            "mensagem": "Nome ou e-mail excede o tamanho permitido."
+        }), 400
+
+    if "@" not in mensagem.email or "." not in mensagem.email.rsplit("@", 1)[-1]:
+        return jsonify({
+            "mensagem": "Informe um e-mail válido."
         }), 400
 
     id_mensagem = mensagem_dao.cadastrar(mensagem)
@@ -260,6 +305,6 @@ def erro_banco(error):
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
-        port=5000,
-        debug=True
+        port=int(os.getenv("PORT", "5000")),
+        debug=os.getenv("FLASK_DEBUG", "false").lower() == "true"
     )

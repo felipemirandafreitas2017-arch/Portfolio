@@ -21,16 +21,19 @@ class Cep:
     @staticmethod
     def from_dict(dados):
         # Aceita tanto os nomes usados no banco quanto os nomes do ViaCEP.
-        cep = str(dados.get("cep", "")).replace("-", "")
-        rua = dados.get("rua", dados.get("logradouro", ""))
-        cidade = dados.get("cidade", dados.get("localidade", ""))
+        if not isinstance(dados, dict):
+            dados = {}
+
+        cep = str(dados.get("cep", "")).replace("-", "").strip()
+        rua = str(dados.get("rua", dados.get("logradouro", "")) or "").strip()
+        cidade = str(dados.get("cidade", dados.get("localidade", "")) or "").strip()
 
         return Cep(
             cep,
             rua,
-            dados.get("bairro", ""),
+            str(dados.get("bairro", "") or "").strip(),
             cidade,
-            dados.get("uf", "")
+            str(dados.get("uf", "") or "").strip().upper()
         )
 
 
@@ -57,6 +60,9 @@ class Mensagem:
 
     @staticmethod
     def from_dict(dados):
+        if not isinstance(dados, dict):
+            dados = {}
+
         dados_cep = dados.get("cep")
 
         # Se o CEP vier junto com as demais informações, usa esse bloco.
@@ -66,9 +72,9 @@ class Mensagem:
 
         return Mensagem(
             None,
-            dados.get("nome", "").strip(),
-            dados.get("email", "").strip(),
-            dados.get("texto", "").strip(),
+            str(dados.get("nome", "") or "").strip(),
+            str(dados.get("email", "") or "").strip(),
+            str(dados.get("texto", "") or "").strip(),
             None,
             Cep.from_dict(dados_cep)
         )
@@ -98,10 +104,13 @@ class Projeto:
     @staticmethod
     def from_dict(dados):
         # Cria um objeto Projeto a partir do JSON enviado pela aplicação.
+        if not isinstance(dados, dict):
+            dados = {}
+
         return Projeto(
-            dados.get("titulo", "").strip(),
-            dados.get("descricao", "").strip(),
-            dados.get("imagem"),
-            dados.get("categoria"),
-            dados.get("link")
+            str(dados.get("titulo", "") or "").strip(),
+            str(dados.get("descricao", "") or "").strip(),
+            str(dados.get("imagem", "") or "").strip() or None,
+            str(dados.get("categoria", "") or "").strip() or None,
+            str(dados.get("link", "") or "").strip() or None
         )
